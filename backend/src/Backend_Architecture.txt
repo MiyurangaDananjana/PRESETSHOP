@@ -1,0 +1,545 @@
+================================================================================
+SIMPLIFIED E-COMMERCE BACKEND ARCHITECTURE
+ASP.NET REST API
+================================================================================
+
+PROJECT OVERVIEW
+----------------
+- Admin uploads products
+- Users view products
+- Users create account, select products, and buy
+- Simple order management
+
+================================================================================
+DATABASE ENTITIES & RELATIONSHIPS
+================================================================================
+
+1. USER ENTITY
+--------------
+- Id (Primary Key)
+- Email (Unique)
+- PasswordHash
+- FullName
+- PhoneNumber
+- Address
+- City
+- Country
+- PostalCode
+- CreatedAt
+
+Relationships:
+  └── One-to-Many → Orders
+
+
+2. PRODUCT ENTITY
+-----------------
+- Id (Primary Key)
+- Name
+- Description
+- Price
+- ImageUrl
+- StockQuantity
+- IsActive
+- CreatedAt
+
+Relationships:
+  └── One-to-Many → OrderItems
+
+
+3. ORDER ENTITY
+---------------
+- Id (Primary Key)
+- UserId (Foreign Key)
+- OrderNumber (Auto-generated, Unique)
+- TotalAmount
+- Status (Enum: Pending, Completed, Cancelled)
+- PaymentMethod (Enum: CreditCard, DebitCard, Cash)
+- ShippingAddress
+- OrderDate
+
+Relationships:
+  ├── Many-to-One → User
+  └── One-to-Many → OrderItems
+
+
+4. ORDERITEM ENTITY
+-------------------
+- Id (Primary Key)
+- OrderId (Foreign Key)
+- ProductId (Foreign Key)
+- Quantity
+- UnitPrice
+- TotalPrice
+
+Relationships:
+  ├── Many-to-One → Order
+  └── Many-to-One → Product
+
+
+================================================================================
+ENTITY RELATIONSHIPS DIAGRAM
+================================================================================
+
+User (1) ─────── (Many) Order
+                           │
+                           │ (1)
+                           │
+                           └── (Many) OrderItem ──── (Many:1) Product
+
+
+================================================================================
+CONTROLLER ARCHITECTURE
+================================================================================
+
+1. AuthController
+-----------------
+Endpoint: /api/auth
+
+Routes:
+- POST /api/auth/register       # User creates account
+- POST /api/auth/login          # User login
+
+
+2. ProductsController
+---------------------
+Endpoint: /api/products
+
+Routes:
+- GET    /api/products             # Users view all products
+- GET    /api/products/{id}        # View single product details
+- POST   /api/products             # [ADMIN ONLY] Upload new product
+- PUT    /api/products/{id}        # [ADMIN ONLY] Update product
+- DELETE /api/products/{id}        # [ADMIN ONLY] Delete product
+
+
+3. OrdersController
+-------------------
+Endpoint: /api/orders
+
+Routes:
+- POST /api/orders               # User creates order (purchase)
+- GET  /api/orders/my-orders     # User views their order history
+- GET  /api/orders/{id}          # View specific order details
+
+
+4. UsersController
+------------------
+Endpoint: /api/users
+
+Routes:
+- GET  /api/users/profile        # Get current user profile
+- PUT  /api/users/profile        # Update user details
+
+
+================================================================================
+DATA TRANSFER OBJECTS (DTOs)
+================================================================================
+
+REQUEST DTOs
+------------
+
+RegisterRequest
+---------------
+- Email
+- Password
+- FullName
+- PhoneNumber
+- Address
+- City
+- Country
+- PostalCode
+
+
+LoginRequest
+------------
+- Email
+- Password
+
+
+CreateProductRequest (Admin Only)
+----------------------------------
+- Name
+- Description
+- Price
+- ImageUrl
+- StockQuantity
+
+
+CreateOrderRequest
+------------------
+- Items (List<OrderItemDto>)
+- PaymentMethod
+- ShippingAddress
+
+
+OrderItemDto
+------------
+- ProductId
+- Quantity
+
+
+UpdateUserProfileRequest
+------------------------
+- FullName
+- PhoneNumber
+- Address
+- City
+- Country
+- PostalCode
+
+
+RESPONSE DTOs
+-------------
+
+AuthResponse
+------------
+- Token (JWT)
+- Email
+- FullName
+
+
+ProductResponse
+---------------
+- Id
+- Name
+- Description
+- Price
+- ImageUrl
+- StockQuantity
+- IsActive
+
+
+OrderResponse
+-------------
+- Id
+- OrderNumber
+- TotalAmount
+- Status
+- OrderDate
+- Items (List<OrderItemResponse>)
+- ShippingAddress
+
+
+OrderItemResponse
+-----------------
+- ProductName
+- Quantity
+- UnitPrice
+- TotalPrice
+
+
+UserProfileResponse
+-------------------
+- Email
+- FullName
+- PhoneNumber
+- Address
+- City
+- Country
+- PostalCode
+
+
+================================================================================
+SERVICE LAYER ARCHITECTURE
+================================================================================
+
+1. IAuthService
+---------------
+Methods:
+- RegisterAsync(RegisterRequest request)
+- LoginAsync(LoginRequest request)
+
+
+2. IProductService
+------------------
+Methods:
+- GetAllProductsAsync()
+- GetProductByIdAsync(int id)
+- CreateProductAsync(CreateProductRequest request)      # Admin only
+- UpdateProductAsync(int id, CreateProductRequest request)      # Admin only
+- DeleteProductAsync(int id)      # Admin only
+
+
+3. IOrderService
+----------------
+Methods:
+- CreateOrderAsync(int userId, CreateOrderRequest request)
+- GetUserOrdersAsync(int userId)
+- GetOrderByIdAsync(int orderId)
+- CancelOrderAsync(int orderId)
+
+
+4. IUserService
+---------------
+Methods:
+- GetUserProfileAsync(int userId)
+- UpdateUserProfileAsync(int userId, UpdateUserProfileRequest request)
+
+
+================================================================================
+USER FLOW
+================================================================================
+
+1. USER REGISTRATION
+--------------------
+Request:  POST /api/auth/register
+Body:     { email, password, fullName, phoneNumber, address, city, country, postalCode }
+Response: { token, email, fullName }
+
+
+2. USER LOGIN
+-------------
+Request:  POST /api/auth/login
+Body:     { email, password }
+Response: { token, email, fullName }
+
+
+3. BROWSE PRODUCTS
+------------------
+Request:  GET /api/products
+Headers:  Authorization: Bearer {token}
+Response: List of all active products
+
+
+4. SELECT & BUY PRODUCTS
+------------------------
+Request:  POST /api/orders
+Headers:  Authorization: Bearer {token}
+Body:     {
+            items: [
+              { productId: 1, quantity: 2 },
+              { productId: 3, quantity: 1 }
+            ],
+            paymentMethod: "CreditCard",
+            shippingAddress: "123 Main St, City, Country"
+          }
+Response: Order details with order number and total amount
+
+
+5. VIEW ORDER HISTORY
+---------------------
+Request:  GET /api/orders/my-orders
+Headers:  Authorization: Bearer {token}
+Response: List of user's orders
+
+
+================================================================================
+ADMIN FLOW
+================================================================================
+
+1. ADMIN LOGIN
+--------------
+Request:  POST /api/auth/login
+Body:     { email: "admin@example.com", password: "adminpass" }
+Response: { token, email, fullName }
+
+
+2. UPLOAD PRODUCT
+-----------------
+Request:  POST /api/products
+Headers:  Authorization: Bearer {token}
+Body:     {
+            name: "Product Name",
+            description: "Product Description",
+            price: 99.99,
+            imageUrl: "https://example.com/image.jpg",
+            stockQuantity: 100
+          }
+Response: Created product details
+
+
+3. UPDATE PRODUCT
+-----------------
+Request:  PUT /api/products/{id}
+Headers:  Authorization: Bearer {token}
+Body:     { name, description, price, imageUrl, stockQuantity }
+Response: Updated product details
+
+
+4. DELETE PRODUCT
+-----------------
+Request:  DELETE /api/products/{id}
+Headers:  Authorization: Bearer {token}
+Response: Success message
+
+
+================================================================================
+DATABASE INDEXES FOR PERFORMANCE
+================================================================================
+
+User Table:
+-----------
+- Email (Unique Index)
+
+Product Table:
+--------------
+- IsActive (Index)
+
+Order Table:
+------------
+- UserId (Index)
+- OrderNumber (Unique Index)
+
+OrderItem Table:
+----------------
+- OrderId (Index)
+- ProductId (Index)
+
+
+================================================================================
+ENUMS
+================================================================================
+
+OrderStatus
+-----------
+- Pending
+- Completed
+- Cancelled
+
+
+PaymentMethod
+-------------
+- CreditCard
+- DebitCard
+- Cash
+
+
+================================================================================
+PROJECT STRUCTURE
+================================================================================
+
+Project-X-API/
+├── Controllers/
+│   ├── AuthController.cs
+│   ├── ProductsController.cs
+│   ├── OrdersController.cs
+│   └── UsersController.cs
+│
+├── Services/
+│   ├── Interfaces/
+│   │   ├── IAuthService.cs
+│   │   ├── IProductService.cs
+│   │   ├── IOrderService.cs
+│   │   └── IUserService.cs
+│   │
+│   └── Implementations/
+│       ├── AuthService.cs
+│       ├── ProductService.cs
+│       ├── OrderService.cs
+│       └── UserService.cs
+│
+├── Data/
+│   ├── Models/
+│   │   ├── User.cs
+│   │   ├── Product.cs
+│   │   ├── Order.cs
+│   │   └── OrderItem.cs
+│   │
+│   ├── DTOs/
+│   │   ├── RegisterRequest.cs
+│   │   ├── LoginRequest.cs
+│   │   ├── CreateProductRequest.cs
+│   │   ├── CreateOrderRequest.cs
+│   │   ├── ProductResponse.cs
+│   │   ├── OrderResponse.cs
+│   │   └── AuthResponse.cs
+│   │
+│   ├── Enums/
+│   │   ├── OrderStatus.cs
+│   │   └── PaymentMethod.cs
+│   │
+│   └── ApplicationDbContext.cs
+│
+├── Middleware/
+│   └── AuthenticationMiddleware.cs
+│
+├── Program.cs
+└── appsettings.json
+
+
+================================================================================
+REQUIRED NUGET PACKAGES
+================================================================================
+
+1. Microsoft.EntityFrameworkCore.SqlServer
+   - For database operations
+
+2. Microsoft.EntityFrameworkCore.Tools
+   - For migrations
+
+3. Microsoft.AspNetCore.Authentication.JwtBearer
+   - For JWT authentication
+
+4. System.IdentityModel.Tokens.Jwt
+   - For token generation
+
+5. BCrypt.Net-Next
+   - For password hashing
+
+6. AutoMapper.Extensions.Microsoft.DependencyInjection
+   - For object mapping
+
+
+================================================================================
+SECURITY CONSIDERATIONS
+================================================================================
+
+1. Password Storage
+   - Use BCrypt for hashing passwords
+   - Never store plain text passwords
+
+2. Authentication
+   - Use JWT tokens
+   - Implement token expiration
+   - Secure token storage on client side
+
+3. Authorization
+   - Protect admin endpoints
+   - Validate user owns the resources they're accessing
+
+4. Validation
+   - Validate all input data
+   - Check stock quantity before creating orders
+   - Validate email format
+
+5. HTTPS
+   - Always use HTTPS in production
+   - Enforce HTTPS redirection
+
+
+================================================================================
+API RESPONSE FORMAT
+================================================================================
+
+Success Response:
+{
+  "success": true,
+  "data": { ... },
+  "message": "Operation successful"
+}
+
+Error Response:
+{
+  "success": false,
+  "error": "Error message",
+  "message": "Detailed error description"
+}
+
+
+================================================================================
+IMPLEMENTATION ORDER
+================================================================================
+
+1. Setup Database Context and Models
+2. Implement User Registration and Login (AuthController + AuthService)
+3. Implement JWT Authentication
+4. Implement Product Management (ProductsController + ProductService)
+5. Implement Order Creation (OrdersController + OrderService)
+6. Implement User Profile Management
+7. Add Validation and Error Handling
+8. Test all endpoints
+
+
+================================================================================
+END OF DOCUMENT
+================================================================================
