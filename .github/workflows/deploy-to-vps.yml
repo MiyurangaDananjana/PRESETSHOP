@@ -10,6 +10,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     
     steps:
     - name: Deploy to VPS
@@ -17,28 +18,27 @@ jobs:
       env:
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
       with:
         host: ${{ secrets.VPS_HOST }}
         username: ${{ secrets.VPS_USER }}
         key: ${{ secrets.VPS_SSH_KEY }}
-        envs: DOCKER_USERNAME,DOCKER_PASSWORD
+        envs: DOCKER_USERNAME,DOCKER_PASSWORD,DOCKER_REGISTRY
         script: |
           set -e
           
           echo "📁 Navigating to application directory..."
-          cd /opt/presetshop
-          
-          echo "📥 Pulling latest code from GitHub..."
-          git pull origin main
+          cd /opt/presetshop || exit 1
           
           echo "🔐 Logging into Docker Hub..."
           echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
           
           echo "📥 Pulling latest Docker images..."
-          docker-compose -f docker-compose.prod.yml pull
+          docker pull ${DOCKER_REGISTRY}/presetshop-backend:latest
+          docker pull ${DOCKER_REGISTRY}/presetshop-frontend:latest
           
           echo "🛑 Stopping old containers..."
-          docker-compose -f docker-compose.prod.yml down
+          docker-compose -f docker-compose.prod.yml down || true
           
           echo "🚀 Starting new containers..."
           docker-compose -f docker-compose.prod.yml up -d
@@ -49,5 +49,5 @@ jobs:
           echo "✅ Container status:"
           docker-compose -f docker-compose.prod.yml ps
           
-          echo "🧹 Cleaning up..."
-          docker system prune -f
+          echo "🧹 Cleaning up unused images..."
+          docker image prune -f
