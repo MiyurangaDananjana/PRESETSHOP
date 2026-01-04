@@ -16,6 +16,6 @@ public class Product
     public Enums.ProductEnum IsActive { get; set; }
     public DateTime? CreateAt { get; set; }
 
-    
-    public ICollection<OrderItem> OrderItems { get; set; }
+
+    public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
 }

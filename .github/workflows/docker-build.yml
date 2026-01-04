@@ -24,11 +24,11 @@ jobs:
       with:
         context: ./backend
         push: true
-        tags: yourdockerhub/backend:latest
+        tags: miyuranga/backend:latest
 
     - name: Build & Push Frontend
       uses: docker/build-push-action@v5
       with:
         context: ./frontend
         push: true
-        tags: yourdockerhub/frontend:latest
+        tags: miyuranga/frontend:latest

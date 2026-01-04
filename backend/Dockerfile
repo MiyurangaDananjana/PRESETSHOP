@@ -10,7 +10,7 @@ RUN dotnet restore ./Project-X-API.csproj
 COPY src/ ./
 
 # publish (self-contained NOT needed)
-RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish ./Project-X-API.csproj -c Release -o /app/publish /p:UseAppHost=false
 
 
 # -------- RUNTIME STAGE --------

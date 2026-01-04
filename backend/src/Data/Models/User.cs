@@ -18,5 +18,5 @@ public class User
     public DateTime? CreateAt { get; set; }
 
     //Navigation
-    public ICollection<Order> Orders { get; set; }
+    public ICollection<Order> Orders { get; set; } = new List<Order>();
 }
