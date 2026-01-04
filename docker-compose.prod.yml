@@ -4,7 +4,7 @@ services:
   backend:
     # TODO: Replace with your actual Docker Hub image name
     # Example: your-username/presetshop-backend:latest
-    image: your-dockerhub-username/presetshop-backend:latest
+    image:  ${DOCKER_REGISTRY}/presetshop-backend:latest
     restart: always
     env_file:
       - .env
@@ -24,7 +24,7 @@ services:
   frontend:
     # TODO: Replace with your actual Docker Hub image name
     # Example: your-username/presetshop-frontend:latest
-    image: your-dockerhub-username/presetshop-frontend:latest
+    image:  ${DOCKER_REGISTRY}/presetshop-frontend:latest
     restart: always
     environment:
       - NODE_ENV=production
@@ -48,6 +48,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s

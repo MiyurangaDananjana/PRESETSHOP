@@ -39,6 +39,7 @@ services:
       POSTGRES_DB: preset_shop
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sa -d preset_shop"]
