@@ -4,11 +4,27 @@ using ProjectX.API.Data;
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure Database Connection
-var connectionString = $"Host={Environment.GetEnvironmentVariable("POSTGRES_HOST") ?? "localhost"};" +
+// Priority: 1) Environment variables (for Docker), 2) appsettings.json ConnectionStrings
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+// If ConnectionString not in appsettings, build from environment variables
+if (string.IsNullOrEmpty(connectionString))
+{
+    connectionString = $"Host={Environment.GetEnvironmentVariable("POSTGRES_HOST") ?? "localhost"};" +
                       $"Port={Environment.GetEnvironmentVariable("POSTGRES_PORT") ?? "5432"};" +
                       $"Database={Environment.GetEnvironmentVariable("POSTGRES_DB") ?? "preset_shop"};" +
                       $"Username={Environment.GetEnvironmentVariable("POSTGRES_USER") ?? "sa"};" +
                       $"Password={Environment.GetEnvironmentVariable("POSTGRES_PASSWORD") ?? "abc"}";
+}
+// Override with environment variables if they exist (Docker deployment)
+else if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("POSTGRES_HOST")))
+{
+    connectionString = $"Host={Environment.GetEnvironmentVariable("POSTGRES_HOST")};" +
+                      $"Port={Environment.GetEnvironmentVariable("POSTGRES_PORT") ?? "5432"};" +
+                      $"Database={Environment.GetEnvironmentVariable("POSTGRES_DB") ?? "preset_shop"};" +
+                      $"Username={Environment.GetEnvironmentVariable("POSTGRES_USER") ?? "sa"};" +
+                      $"Password={Environment.GetEnvironmentVariable("POSTGRES_PASSWORD") ?? "abc"}";
+}
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
